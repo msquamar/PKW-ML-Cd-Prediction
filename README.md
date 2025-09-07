@@ -20,7 +20,7 @@ Clone this repository:
 pip install -r requirements.txt
 
 # Run GUI Application 
-python Cd_New_Predictor.py
+python Cd_Predictor.py
 
 # Run Individual Models
 python models/SVR_Model.py
