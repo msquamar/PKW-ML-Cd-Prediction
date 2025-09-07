@@ -4,7 +4,7 @@ This repository provides the source code and models for predicting the coefficie
 It is developed as part of the research paper: "Application of Machine Learning Models for Predicting the Coefficient of Discharge of Type-A Piano Key Weirs."
 
 # Repository Structure
-Cd_New_Predictor.py → GUI tool for predicting Cd using multiple ML models.  
+Cd_Predictor.py → GUI tool for predicting Cd using multiple ML models.  
 models → Contains individual implementations of ML models:
 SVR_Model.py
 Random Forest_Model.py
