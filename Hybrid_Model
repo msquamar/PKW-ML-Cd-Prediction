@@ -1,0 +1,123 @@
+# Hybrid SVR + Random Forest Implementation for CPKW Prediction
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVR
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from sklearn.linear_model import LinearRegression
+import os
+
+# === Evaluation Function ===
+def evaluate_model_performance(y_true, y_pred):
+    mae = mean_absolute_error(y_true, y_pred)
+    mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+    mse = mean_squared_error(y_true, y_pred)
+    rmse = np.sqrt(mse)
+    sse = np.sum((y_true - y_pred) ** 2)
+    cc = np.corrcoef(y_true, y_pred)[0, 1]
+    mean_actual = np.mean(y_true)
+    mae_percent = (mae / mean_actual) * 100
+    rmse_percent = (rmse / mean_actual) * 100
+    nse = 1 - (np.sum((y_true - y_pred) ** 2) / np.sum((y_true - np.mean(y_true)) ** 2))
+    r2 = r2_score(y_true, y_pred)
+
+    return pd.DataFrame({
+        "MAE": [mae],
+        "MAE (%)": [mae_percent],
+        "MAPE (%)": [mape],
+        "SSE": [sse],
+        "MSE": [mse],
+        "RMSE": [rmse],
+        "RMSE (%)": [rmse_percent],
+        "R (CC)": [cc],
+        "R²": [r2],
+        "E² (NSE)": [nse]
+    })
+
+# === Load Data ===
+data = pd.read_excel("load the path of data.xlsx")
+X = data[['L/W', 'H/P', 'Wi/Wo', 'P/Wu']]
+y = data['CPKW']
+
+# === Train-Test Split ===
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# === Scale Inputs ===
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# === Train SVR Model ===
+svr_model = SVR(kernel='rbf', C=100, epsilon=0.01)
+svr_model.fit(X_train_scaled, y_train)
+svr_pred = svr_model.predict(X_test_scaled)
+
+# === Train Random Forest Model ===
+rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+rf_pred = rf_model.predict(X_test)
+
+# === Hybrid Prediction (Average) ===
+hybrid_pred = (svr_pred + rf_pred) / 2
+
+# === Results DataFrame ===
+test_results = X_test.copy()
+test_results['Actual_CPKW'] = y_test.values
+test_results['Predicted_CPKW'] = hybrid_pred
+test_results['Residual'] = y_test.values - hybrid_pred
+test_results['Abs_Error'] = np.abs(test_results['Residual'])
+
+# === Evaluate ===
+test_perf = evaluate_model_performance(y_test.values, hybrid_pred)
+
+# === Save Results ===
+os.makedirs("C:/RESULTS OF ML", exist_ok=True)
+save_path = "C:/RESULTS OF ML/Hybrid_SVR_RF_Results.xlsx"
+with pd.ExcelWriter(save_path) as writer:
+    test_perf.to_excel(writer, sheet_name="Test_Performance", index=False)
+    test_results.to_excel(writer, sheet_name="Test_Actual_vs_Predicted", index=False)
+    test_results[['Residual', 'Abs_Error']].to_excel(writer, sheet_name="Test_Residuals", index=False)
+
+# === Plot ===
+plt.figure(figsize=(6, 6))
+plt.scatter(y_test, hybrid_pred, color='purple')
+plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'r--')
+plt.xlabel('Actual CPKW')
+plt.ylabel('Predicted CPKW')
+plt.title('Hybrid SVR+RF: Actual vs Predicted (Test)')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(6, 4))
+plt.scatter(range(len(hybrid_pred)), y_test - hybrid_pred, color='darkred')
+plt.axhline(0, color='gray', linestyle='--')
+plt.title("Hybrid SVR+RF: Residual Plot (Test Set)")
+plt.xlabel("Sample Index")
+plt.ylabel("Residual")
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+print(f"✅ Hybrid SVR+RF results saved to: {save_path}") 
+
+# save the model 
+import pickle
+
+# Assume 'your_trained_model' is the trained machine learning model object
+# (e.g., a scikit-learn model like LogisticRegression, RandomForestClassifier, etc.)
+
+filename1 = 'svr_hyb.pkl' # Choose a descriptive filename with a .pkl extension
+
+with open(filename1, 'wb') as file:
+    pickle.dump(svr_model, file) 
+
+filename2 = 'rf_hyb.pkl' # Choose a descriptive filename with a .pkl extension
+
+with open(filename2, 'wb') as file:
+    pickle.dump(rf_model, file) 
+print(f"hybrid models saved to: {save_path}") 
